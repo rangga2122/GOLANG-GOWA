@@ -99,6 +99,125 @@ docker run -d \
 docker-compose up -d
 ```
 
+#### Option 3: aaPanel Installation
+
+**Langkah 1: Persiapan Server**
+1. **Install aaPanel** di server VPS Anda:
+```bash
+wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && sudo bash install.sh aapanel
+```
+
+2. **Login ke aaPanel** melalui browser:
+   - URL: `http://your-server-ip:8888`
+   - Gunakan kredensial yang ditampilkan setelah instalasi
+
+**Langkah 2: Install Dependencies**
+1. **Install Docker** melalui aaPanel:
+   - Masuk ke **App Store** → **System Tools** → **Docker Manager**
+   - Klik **Install** dan tunggu proses selesai
+
+2. **Install Git** (jika belum ada):
+   - Masuk ke **Terminal** di aaPanel
+   - Jalankan: `yum install git -y` (CentOS) atau `apt install git -y` (Ubuntu)
+
+**Langkah 3: Setup Project**
+1. **Clone Repository**:
+   - Buka **File Manager** di aaPanel
+   - Navigasi ke `/www/wwwroot/`
+   - Buka **Terminal** dan jalankan:
+```bash
+cd /www/wwwroot/
+git clone https://github.com/username/gowa-broadcast.git
+cd gowa-broadcast
+```
+
+2. **Setup Environment**:
+```bash
+cp .env.example .env
+nano .env  # Edit sesuai kebutuhan
+```
+
+**Langkah 4: Deploy dengan Docker**
+1. **Build dan Run Container**:
+```bash
+docker build -t gowa-broadcast .
+docker run -d --name gowa-broadcast \
+  -p 8080:8080 \
+  --env-file .env \
+  --restart unless-stopped \
+  gowa-broadcast
+```
+
+2. **Atau gunakan Docker Compose**:
+```bash
+docker-compose up -d
+```
+
+**Langkah 5: Setup Reverse Proxy (Opsional)**
+1. **Buat Website** di aaPanel:
+   - Masuk ke **Website** → **Add Site**
+   - Domain: `yourdomain.com`
+   - Document Root: `/www/wwwroot/gowa-broadcast`
+
+2. **Setup Reverse Proxy**:
+   - Klik **Settings** pada website yang dibuat
+   - Masuk ke **Reverse Proxy**
+   - Target URL: `http://127.0.0.1:8080`
+   - Enable proxy
+
+3. **Setup SSL** (Opsional):
+   - Masuk ke **SSL** tab
+   - Pilih **Let's Encrypt** untuk SSL gratis
+   - Apply certificate
+
+**Langkah 6: Monitoring**
+1. **Cek Status Container**:
+```bash
+docker ps
+docker logs gowa-broadcast
+```
+
+2. **Monitor melalui aaPanel**:
+   - **Docker Manager** → **Container** untuk melihat status
+   - **System** → **Process** untuk monitoring resource
+
+**Langkah 7: Auto-Update (Opsional)**
+1. **Buat Script Update**:
+```bash
+nano /www/wwwroot/update-gowa.sh
+```
+
+2. **Isi script**:
+```bash
+#!/bin/bash
+cd /www/wwwroot/gowa-broadcast
+git pull origin main
+docker-compose down
+docker-compose build
+docker-compose up -d
+echo "GOWA Broadcast updated successfully!"
+```
+
+3. **Set executable**:
+```bash
+chmod +x /www/wwwroot/update-gowa.sh
+```
+
+4. **Setup Cron Job** di aaPanel:
+   - **Cron** → **Add Task**
+   - Type: **Shell Script**
+   - Script Path: `/www/wwwroot/update-gowa.sh`
+   - Schedule: Sesuai kebutuhan (misal: daily)
+
+**Keuntungan aaPanel:**
+- ✅ **GUI Management** - Interface web yang user-friendly
+- ✅ **One-Click Install** - Docker, databases, web server
+- ✅ **File Manager** - Edit file langsung dari browser
+- ✅ **SSL Management** - Setup HTTPS dengan mudah
+- ✅ **Monitoring** - Resource usage, logs, alerts
+- ✅ **Backup** - Automated backup scheduling
+- ✅ **Security** - Firewall, fail2ban, security scanner
+
 #### Option 3: Docker Portainer
 
 **Langkah 1: Setup GitHub Repository**
@@ -204,6 +323,60 @@ Jika ingin mengatur environment variables langsung di Portainer:
 - **WhatsApp tidak connect**: Pastikan port 8080 accessible dan scan QR code
 - **JWT error**: Pastikan `JWT_SECRET` sudah di-set dengan benar
 - **Memory issues**: Monitor usage dan adjust container limits jika perlu
+
+**Tips untuk aaPanel Deployment:**
+
+1. **Security First**:
+   - Ubah default port aaPanel (8888) ke port custom
+   - Enable two-factor authentication
+   - Update aaPanel secara berkala
+   - Setup firewall rules yang ketat
+
+2. **Resource Management**:
+   - Monitor CPU dan RAM usage melalui dashboard
+   - Set container resource limits
+   - Enable swap jika RAM terbatas
+
+3. **Backup Strategy**:
+   - Setup automated backup untuk `/www/wwwroot/gowa-broadcast`
+   - Backup database SQLite secara berkala
+   - Export environment variables
+
+4. **Domain & SSL**:
+   - Gunakan domain untuk akses yang mudah
+   - Enable SSL/HTTPS untuk keamanan
+   - Setup redirect HTTP ke HTTPS
+
+**aaPanel Specific Troubleshooting:**
+
+- **Docker Service Not Starting**:
+  ```bash
+  sudo systemctl start docker
+  sudo systemctl enable docker
+  ```
+
+- **Permission Denied**:
+  ```bash
+  sudo usermod -aG docker $USER
+  # Logout dan login kembali
+  ```
+
+- **Port Already in Use**:
+  ```bash
+  sudo netstat -tulpn | grep :8080
+  sudo kill -9 <PID>
+  ```
+
+- **SSL Certificate Issues**:
+  - Pastikan domain pointing ke server IP
+  - Check DNS propagation
+  - Verify port 80 dan 443 terbuka
+
+- **File Permission Issues**:
+  ```bash
+  sudo chown -R www-data:www-data /www/wwwroot/gowa-broadcast
+  sudo chmod -R 755 /www/wwwroot/gowa-broadcast
+  ```
 
 #### Option 4: GitHub Actions + Portainer (Advanced)
 
