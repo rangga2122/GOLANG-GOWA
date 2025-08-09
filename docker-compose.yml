@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  gowa-broadcast:
+    build: .
+    container_name: gowa-broadcast
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+      - ./.env:/app/.env:ro
+    environment:
+      - SERVER_PORT=8080
+      - DB_TYPE=sqlite
+      - DB_PATH=/app/data/gowa.db
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/whatsapp/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - gowa-network
+
+  # Optional: PostgreSQL database
+  # Uncomment if you want to use PostgreSQL instead of SQLite
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: gowa-postgres
+  #   environment:
+  #     POSTGRES_DB: gowa_broadcast
+  #     POSTGRES_USER: gowa_user
+  #     POSTGRES_PASSWORD: gowa_password
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   restart: unless-stopped
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 256M
+  #         cpus: '0.25'
+  #   networks:
+  #     - gowa-network
+
+  # Optional: Nginx reverse proxy
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: gowa-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - gowa-broadcast
+  #   restart: unless-stopped
+  #   networks:
+  #     - gowa-network
+
+networks:
+  gowa-network:
+    driver: bridge
+
+# volumes:
+#   postgres_data:
